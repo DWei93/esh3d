@@ -24,21 +24,24 @@ This code, as an improvement over the original,
 * Slightly more expensive if the numerical (FEM) half space correction is engaged.
 
 ## INSTALL 
-* 3rd party package [PETSc](https://www.mcs.anl.gov/petsc) built with [HDF5](https://support.hdfgroup.org/HDF5), e.g. configured with `--download-hdf5`.
+* 3rd party package [PETSc](https://www.mcs.anl.gov/petsc) built with [HDF5](https://support.hdfgroup.org/HDF5), e.g. configured with `--download-hdf5`[^dwei1].
 * At src folder, run `make all` to build.
 * To obtain half space solution, [Trelis/Cubit](https://cubit.sandia.gov) mesh (hex or tet) is expected by preprocessor (python) script. 
 
+[^dwei1]: There may be problems with the hdf5 link. You can insert variable `HDF_LIB` in the makefile to link hdf5 again.
 ## RUN
 Analytical (full space) solution  
 
-* At example folder edit esh3d.py file "half=False", and run `./esh3d.py` to generate esh3d.inp;  
+* At example folder edit esh3d.py file "full=True" and "half=False", and run `python3 esh3d.py esh3d` to generate esh3d.inp;  
 * run `../bin/esh3d -f esh3d.inp`  
 
 Semi-analytical-numerical (half space) solution  
 
-* Run `trelis[cubit] -nojournal -nographics esh3d.jou` to generate FE mesh esh3d.exo.  
-* Have "half=True" in esh3d.py, and run `./esh3d esh3d.exo` to produce esh3d.inp with the mesh.  
-* run `mpirun ../bin/esh3d -f esh3d.inp`  
+* Run `trelis[cubit] -nojournal -nographics esh3d.jou` to generate FE mesh esh3d.exo[^dwei2].  
+* Have "full=False" and "half=True" in esh3d.py, and run `python3 esh3d.py esh3d.exo` to produce esh3d.inp with the mesh.  
+* run `mpirun -n 4 ../bin/esh3d -f esh3d.inp`  
+
+[^dwei2]: The commands in esh3d.jou can be entered directly in cubit.
 
 Use the Python and Cubit scripts as templates to roll custom models.
 

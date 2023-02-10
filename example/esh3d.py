@@ -5,7 +5,7 @@ import sys, os
 fin = sys.argv[1]
 fout = fin.rsplit('.')[0] + '.inp'
 incl=False; inho=True
-full=True; half=False; fini=False; 
+full=False; half=True; fini=False; 
 # Host matrix moduli
 vp=6000.;vs=3464.;rho=2670
 Em=rho*vs**2*(3*vp**2-4*vs**2)/(vp**2-vs**2)
@@ -26,7 +26,7 @@ elif half or fini:
     nc = netCDF4.Dataset(fin)
     line3=['hex 51'] #['tet 29']
     # t=100; dt=0.01; alpha=0.; beta=0.0025; rfrac=0
-    print 'Extracting mesh...'
+    print("Extracting mesh...")
     coord = np.hstack((nc.variables['coordx'][:].\
             reshape(len(nc.variables['coordx']),1),
             nc.variables['coordy'][:].\
@@ -36,7 +36,7 @@ elif half or fini:
     nnd = len(coord)
     hx_node = nc.variables["connect1"][:]
     nel=len(hx_node)
-    print '%d nodes, %d elements' %(nnd,nel)
+    print("%d nodes, %d elements %(nnd,nel)")
     bnd_el=[]
     for i in nc.variables['ss_prop1'][:]:
         els = nc.variables['elem_ss' + str(i)][:]
@@ -179,13 +179,14 @@ nobs=len(ocoord)
 
 if os.path.isfile(fout): os.remove(fout)
 f = open(fout, 'a')
-print 'writing to '+fout+' ...'
+print("writing to ",fout," ...")
 np.savetxt(f, line1, fmt='%s')
+nsolid=0
 if full:
-    np.savetxt(f,np.array([[nellip,nobs]],dtype=np.float64),fmt='%d '*2)
+    np.savetxt(f,np.array([[nellip,nsolid,nobs]],dtype=np.float64),fmt='%d '*3)
     np.savetxt(f,mat,fmt='%g '*2)
 elif half or fini:
-    np.savetxt(f,np.array([[nellip,nrect,nobs]],dtype=np.float64),fmt='%d '*3)
+    np.savetxt(f,np.array([[nellip,nsolid,nrect,nobs]],dtype=np.float64),fmt='%d '*4)
     tol=1E1 # Tolerant traction
     ntol=10 # max iterations
     np.savetxt(f,line3,fmt='%s')
