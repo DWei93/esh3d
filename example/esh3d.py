@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import numpy as np
 import sys, os
 
@@ -18,7 +18,7 @@ if full:
     elif inho:
         line1=['full-inho']
     # Uniaxial remote stress    
-    rstress=np.array([[0.,1E7,0.,0.,0.,0.]],dtype=np.float64)
+    rstress=np.array([[0.,0E7,0.,0.,0.,0.]],dtype=np.float64)
 elif half or fini:
     # Zero remote stress (sources rely on eigenstran or boundary loading)
     rstress = np.zeros(shape=(1,6))
@@ -154,27 +154,25 @@ if half or fini:
 else:
     nrect=0
 
-# Observation grid
-#m=40; n=30
-#ocoord=np.empty((m*n,3),dtype=np.float64)
-#x0=-20.5; x1=20.5; z0=-30.25; z1=0.
-#x=x0; z=z0; dx=1.; dz=1.
-#for i in range(m):
-#    x+=dx; z=z0
-#    for j in range(n):
-#        z+=dz
-#        ocoord[i*n+j,:]=[x,0.,z]
-#nobs=len(ocoord)
-
-m=41; n=41
-ocoord=np.empty((m*n,3),dtype=np.float64)
-x0=-5.; x1=5.; z0=-10.; z1=0.
-dx=(x1-x0)/(m-1); dz=(z1-z0)/(n-1); z=z0-dz 
-for i in range(n):
-    z+=dz; x=x0-dx 
-    for j in range(m):
-        x+=dx
-        ocoord[i*m+j,:]=[0.,x,z]
+m=3; n=11; l=11; nobsArray=[]
+ocoord=np.empty((m*n*l,3),dtype=np.float64)
+xlower=-5.0; xupper=5.0; ylower=-5.0; yupper=5.0; zlower=-20; zupper=-10
+if m>1: dx=(xupper-xlower)/(m-1); nobsArray.append(m) 
+else: dx = 0.0
+if n>1: dy=(yupper-ylower)/(n-1); nobsArray.append(n) 
+else: dy = 0.0  
+if l>1: dz=(zupper-zlower)/(l-1); nobsArray.append(l) 
+else: dz = 0.0 
+if len(nobsArray) == 1: nobsArray.extend([1,1])
+if len(nobsArray) == 2: nobsArray.append(1)
+x=xlower-dx; y=ylower-dy; z=zlower-dz
+for i in range(l):
+    z+=dz; x=xlower-dx; y=ylower-dy
+    for j in range(n):
+        y+=dy; x=xlower-dx
+        for k in range(m):
+            x+=dx
+            ocoord[i*m*n+j*m+k,:] = [x,y,z]
 nobs=len(ocoord)
 
 if os.path.isfile(fout): os.remove(fout)
@@ -183,10 +181,10 @@ print("writing to ",fout," ...")
 np.savetxt(f, line1, fmt='%s')
 nsolid=0
 if full:
-    np.savetxt(f,np.array([[nellip,nsolid,nobs]],dtype=np.float64),fmt='%d '*3)
+    np.savetxt(f,np.array([[nellip,nsolid,nobs,nobsArray[0],nobsArray[1],nobsArray[2]]],dtype=np.float64),fmt='%d '*6)
     np.savetxt(f,mat,fmt='%g '*2)
 elif half or fini:
-    np.savetxt(f,np.array([[nellip,nsolid,nrect,nobs]],dtype=np.float64),fmt='%d '*4)
+    np.savetxt(f,np.array([[nellip,nsolid,nrect,nobs,nobsArray[0],nobsArray[1],nobsArray[2]]],dtype=np.float64),fmt='%d '*7)
     tol=1E1 # Tolerant traction
     ntol=10 # max iterations
     np.savetxt(f,line3,fmt='%s')

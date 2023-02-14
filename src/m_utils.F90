@@ -1,7 +1,7 @@
 module utils
   implicit none
   real(8),parameter :: f0=0.0d0,f1=1.0d0,f2=2.0d0,f3=3.0d0,f4=4.0d0,f6=6.0d0,  &
-     f8=8.0d0,km2m=1000.0d0,gravity=9.806650d0,                                &
+     f8=8.0d0,km2m=1.0d0,gravity=9.806650d0,                                &
      pi=3.1415926535897932384626433832795d0
 
   INTEGER,PARAMETER,PRIVATE:: SP=KIND(1.0), DP=KIND(1.0D0)
@@ -1279,6 +1279,7 @@ END Subroutine SolvePolynomial   ! ------------------------------------------
     real*8 m,del,s,y,sy
     real*8 yy(11),ss(11)
     integer :: i,j
+
     m=1.d0-mc
     del=0.04094d0-0.00652d0*m	! F9	Optimum
     s=s0
@@ -1298,7 +1299,7 @@ END Subroutine SolvePolynomial   ! ------------------------------------------
     		goto 1
     	endif
     enddo
-    write(*,*) "(elsbd) too many iterations: s0,m=",s0,m
+    write(*,*) "(elsbd) too many iterations: s0,m,mc=",s0,m,mc
     1 continue
     call serbd(y,m,b,d)
     b=ss(j+1)*b
@@ -1720,7 +1721,7 @@ END Subroutine SolvePolynomial   ! ------------------------------------------
     	    goto 1
     	endif
     enddo
-    write(*,*) "(relsbd) too many iterations: s0,m=",s0,m
+    write(*,*) "(relsbd) too many iterations: s0,m,mc=",s0,m,mc
     1 continue
     call rserbd(y,m,b,d)
     b=ss(j+1)*b

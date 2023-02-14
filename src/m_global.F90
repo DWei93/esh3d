@@ -17,7 +17,7 @@ module global
 #endif
   ! Global variables
   integer :: nnds,nels,ntrc,ntrc_loc,nobs,nobs_loc,nellip,nellip_loc,nrect,    &
-     ntol,nrtol,nfix,nsolid,nfluid
+     ntol,nrtol,nfix,nsolid,nfluid,obsDim=3,nobsArray(3)
   real(8) :: val,top,rstress(6),tol,rtol,mat(2)
   integer,allocatable :: nodes(:,:),work(:),onlst(:,:),surfel_glb(:),surfel(:),&
      surfside_glb(:),surfside(:),idface(:),oel(:),eel(:),bc(:,:),ndfix_glb(:), &
@@ -728,57 +728,164 @@ contains
   ! Save Esh3D solution to H5 file
   subroutine EshSave
     implicit none
-    integer(hid_t) :: idfile,iddat,spc_dat
-    integer(hsize_t) :: dim_dat(2)
-    integer :: err
+    integer(hid_t) :: idfile,iddat,spc_dat,group_id
+    integer(hsize_t) :: dim_dat(2),dim_dat_obs(3)
+    integer :: err, i
     character(256) :: name,name0,name1
+    character(256), parameter :: groupname = "step1"
+    character(256), parameter :: properName = "properties"
+    integer, parameter :: n = 41
+
+    character(2), parameter :: posName(3) = (/"x", "y","z"/)
+    character(4), parameter :: propertiesList(17) = (/"ellx","elly","ellz","semx","semy","semz","roax","roay","roaz","ymod","poss","es11","es22","es33","es12","es23","es13"/)
+    character(7), parameter :: scName(3) = (/"scoordx","scoordy","scoordz"/)
+    character(6), parameter :: snName(3) = (/"snormx","snormy","snormz"/)
+    character(5), parameter :: sdName(3) = (/"sdatx","sdaty","sdatz"/)
+
+    character(4), allocatable :: odatName(:)
+
+    if (half .or. fini) then
+        allocate(odatName(18))
+        odatName = (/"ux ", "uy ", "uz ",                &
+                    "s11","s22","s33","s12","s23","s13", &
+                    "fx ", "fy ", "fz ",                 &
+                    "f11","f22","f33","f12","f23","f13"/)
+    else
+        allocate(odatName(15))
+        odatName = (/"ux ", "uy ", "uz ",                &
+                    "s11","s22","s33","s12","s23","s13", &
+                    "e11","e22","e33","e12","e23","e13"/)
+    endif
     name0=output_file(:index(output_file,"/",BACK=.TRUE.))
     name1=output_file(index(output_file,"/",BACK=.TRUE.)+1:)
     write(name,'(A,A,A)')trim(name0),trim(name1),".h5"
     call h5open_f(err)
     call h5fcreate_f(trim(name),H5F_ACC_TRUNC_F,idfile,err)
-    ! Obs grid (H5 inverse index order)
-    dim_dat=(/3,nobs/)
-    call h5screate_simple_f(2,dim_dat,spc_dat,err)
-    call h5dcreate_f(idfile,"ocoord",h5t_native_double,spc_dat,iddat,err)
-    call h5dwrite_f(iddat,h5t_native_double,transpose(ocoord)/km2m,dim_dat,err)
-    call h5dclose_f(iddat,err)
-    ! Obs data
-    dim_dat=(/size(odat_glb,2),size(odat_glb,1)/)
-    call h5screate_simple_f(2,dim_dat,spc_dat,err)
-    call h5dcreate_f(idfile,"odat",h5t_native_double,spc_dat,iddat,err)
-    call h5dwrite_f(iddat,h5t_native_double,transpose(odat_glb),dim_dat,err)
-    call h5dclose_f(iddat,err)
-    ! Ellip parameters
-    dim_dat=(/size(ellip,2),size(ellip,1)/)
-    call h5screate_simple_f(2,dim_dat,spc_dat,err)
-    call h5dcreate_f(idfile,"ellip",h5t_native_double,spc_dat,iddat,err)
-    call h5dwrite_f(iddat,h5t_native_double,transpose(ellip),dim_dat,err)
-    call h5dclose_f(iddat,err)
+
+    ! create the proerty group
+    call h5gcreate_f(idfile, properName, group_id, err)
+    dim_dat_obs(1) = size(ellip,1)
+    do i = 1,size(propertiesList,1)
+        call h5screate_simple_f(1,dim_dat_obs,spc_dat,err)
+        call h5dcreate_f(group_id,propertiesList(i),h5t_native_double,spc_dat,iddat,err)
+        call h5dwrite_f(iddat,h5t_native_double,ellip(:,i),dim_dat_obs,err)
+        call h5dclose_f(iddat,err)
+    enddo
+
+    !close the proerty group
+    call h5gclose_f(group_id, err)
+
+    ! create the filed group
+    call h5gcreate_f(idfile, groupname, group_id, err)
+    
+    dim_dat_obs = (/nobsArray(1),nobsArray(2),nobsArray(3)/)
+
+    do i=1,3
+        call h5screate_simple_f(obsDim,dim_dat_obs,spc_dat,err)
+        call h5dcreate_f(group_id,posName(i),h5t_native_double,spc_dat,iddat,err)
+        if (obsDim == 1) then
+            call h5dwrite_f(iddat,h5t_native_double,ocoord(:,i)/km2m,dim_dat_obs,err)
+        else if (obsDim == 2) then
+            call h5dwrite_f(iddat,h5t_native_double,reshape(ocoord(:,i),nobsArray(1:2))/km2m,dim_dat_obs,err)
+        else if (obsDim ==  3) then
+            call h5dwrite_f(iddat,h5t_native_double,reshape(ocoord(:,i),nobsArray)/km2m,dim_dat_obs,err)
+        endif
+        call h5dclose_f(iddat,err)
+    enddo
+
+    ! obs data
+    do i=1,size(odatName,1)
+        call h5screate_simple_f(obsDim,dim_dat_obs,spc_dat,err)
+        call h5dcreate_f(group_id,odatName(i),h5t_native_double,spc_dat,iddat,err)
+
+        if (obsDim == 1) then
+            call h5dwrite_f(iddat,h5t_native_double,odat_glb(:,i)/km2m,dim_dat_obs,err)
+        else if (obsDim==2) then
+            call h5dwrite_f(iddat,h5t_native_double,reshape(odat_glb(:,i),nobsArray(1:2)),dim_dat_obs,err)
+        else if (obsDim==3) then
+            call h5dwrite_f(iddat,h5t_native_double,reshape(odat_glb(:,i),nobsArray(1:3)),dim_dat_obs,err)
+        endif
+        call h5dclose_f(iddat,err)
+    enddo
+
     if (half .or. fini) then
        ! Surface grid
        dim_dat=(/3,ntrc/)
        call h5screate_simple_f(2,dim_dat,spc_dat,err)
-       call h5dcreate_f(idfile,"scoord",h5t_native_double,spc_dat,iddat,err)
+       call h5dcreate_f(group_id,"scoord",h5t_native_double,spc_dat,iddat,err)
        call h5dwrite_f(iddat,h5t_native_double,transpose(surfloc_glb)/km2m,    &
           dim_dat,err)
        call h5dclose_f(iddat,err)
        ! Surface normal
        call h5screate_simple_f(2,dim_dat,spc_dat,err)
-       call h5dcreate_f(idfile,"snorm",h5t_native_double,spc_dat,iddat,err)
+       call h5dcreate_f(group_id,"snorm",h5t_native_double,spc_dat,iddat,err)
        call h5dwrite_f(iddat,h5t_native_double,transpose(surfnrm_glb),         &
           dim_dat,err)
        call h5dclose_f(iddat,err)
        ! Surface data
        dim_dat=(/size(surfdat_glb,2),size(surfdat_glb,1)/)
        call h5screate_simple_f(2,dim_dat,spc_dat,err)
-       call h5dcreate_f(idfile,"sdat",h5t_native_double,spc_dat,iddat,err)
+       call h5dcreate_f(group_id,"sdat",h5t_native_double,spc_dat,iddat,err)
        call h5dwrite_f(iddat,h5t_native_double,transpose(surfdat_glb),         &
           dim_dat,err)
        call h5dclose_f(iddat,err)
+
+        
     end if
+
+    !close the field group
+    call h5gclose_f(group_id, err)
+    
     call h5fclose_f(idfile,err)
     call h5close_f(err)
+
+    deallocate(odatName)
   end subroutine EshSave
 
+  ! Read simulation parameters
+  subroutine ReadParameters(nodal_bw)
+    implicit none
+    integer :: nodal_bw
+    integer,save :: k=0
+    read(10,*)stype
+    full=.false.;half=.false.;fini=.false.;incl=.false.;inho=.false.
+    if (index(stype,"full")/=0) full=.true.
+    if (index(stype,"half")/=0) half=.true.
+    if (index(stype,"fini")/=0) fini=.true.
+    if (index(stype,"incl")/=0) incl=.true.
+    if (index(stype,"inho")/=0) inho=.true.
+    if (full) then
+       read(10,*)nellip,nsolid,nobs,nobsArray(1),nobsArray(2),nobsArray(3)
+    else
+       read(10,*)nellip,nsolid,nrect,nobs,nobsArray(1),nobsArray(2),nobsArray(3)
+    endif
+    
+    if (nobs /= nobsArray(1)*nobsArray(2)*nobsArray(3)) then
+        write(*,*)"nobs(",nobs,")/=",nobsArray(1),"x",nobsArray(2),"x",nobsArray(3)
+        call exit(1)
+    end if
+
+    if (nobsArray(3) == 1) obsDim = 2; 
+    if (nobsArray(2) == 1) obsDim = 1; 
+
+    ! Fluid-solid iteration
+    if (nsolid>0 .and. nellip>nsolid) read(10,*)rtol,nrtol
+    if (k==0) then
+       allocate(ocoord(nobs,3))
+       allocate(ellip(nellip,17),instress(nellip,6)); instress=f0
+       if (half .or. fini) allocate(rect(nrect,9))
+    end if
+    if (half .or. fini) then
+       read(10,*)eltype,nodal_bw
+       read(10,*)nels,nnds,ntrc
+       read(10,*)tol,ntol
+       if (k==0) allocate(odat_glb(nobs,18))
+    else
+       if (k==0) allocate(odat_glb(nobs,15))
+       ntrc=0; nrect=0
+    end if
+    odat_glb=f0
+    read(10,*)mat(:) ! Material
+    k=k+1
+  end subroutine ReadParameters
 end module global

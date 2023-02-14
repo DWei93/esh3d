@@ -840,6 +840,85 @@ contains
     end do ! nellip
   end subroutine EshIncSol
 
+  subroutine EshIncSol2(Em,vm,ellip,ocoord,sol)
+    implicit none
+    integer :: i,j,k,l,m,n,nobs,nellip
+    real(8) :: Em,vm,ocoord(:,:),ellip(:,:),sol(:,:) !,Eh,vh
+    ! ellip(nellip,17): 1-3 ellipsoid centroid coordinate, 4-6 semi-axises, 7-9
+    ! rotation angles around x,y and z axises, 10,11 inclusion Young's modulus
+    ! and Poisson's ratio (not used), 12-17 eigen strain
+    ! sol(nobs,9): 1-3 displacement, 4-9 stress
+    real(8) :: ang(3),a(3),R_init(3,3),Rb_init(3,3),R(3,3),Rb(3,3),PIvec(3),   &
+       Tstress(3,3),Cm(6,6),stresst(6,1),eigent(6,1),vert(3,1),D4(3,3,3,3),    &
+       fderphi(3),tderpsi(3,3,3),disp(3),dispt(3,1),Ttmp(3,3),straint(6,1),       &
+       Teigen(3,3),S2(6,6),Tstrain(3,3)
+    nobs=size(ocoord,1); nellip=size(ellip,1)
+    !sol=f0 ! Initial solution space
+    call CMat(Em,vm,Cm)
+    do i=1,nellip
+       a=ellip(i,4:6)
+       call AxesSort(a,R_init,Rb_init)
+       ! Rotation matrices w.r.t the ellipsoid
+       ang=ellip(i,7:9)
+       call Ang2Mat(ang,R,f1)
+       call Ang2Mat(ang,Rb,-f1)
+       ! Eshelby's tensor
+       call EshS2(vm,a,S2,PIvec)
+       ! Rotate stress and initial eigenstrain against oblique ellipsoid
+       call Vec2Mat(ellip(i,12:17),Teigen)
+       Teigen=matmul(matmul(matmul(R_init,Rb),Teigen),                         &
+              transpose(matmul(R_init,Rb)))
+       eigent(:,1)=(/Teigen(1,1),Teigen(2,2),Teigen(3,3),Teigen(1,2),          &
+                   Teigen(2,3),Teigen(1,3)/)
+       do j=1,nobs
+          vert(:,1)=ocoord(j,:)-ellip(i,:3) ! Relative coordinate
+          vert=matmul(matmul(R_init,Rb),vert)
+          call EshD4(vm,a,vert(:,1),D4,fderphi,tderpsi)
+          call EshDisp(vm,eigent(:,1),fderphi,tderpsi,disp)
+          dispt(:,1)=disp
+          ! Rotate back
+          dispt=matmul(matmul(R,Rb_init),dispt)
+          ! Record displacement
+          sol(j,:3)=sol(j,:3)+dispt(:,1)
+          if (vert(1,1)**2/a(1)**2+vert(2,1)**2/a(2)**2+vert(3,1)**2/a(3)**2   &
+             <=1) then ! J-th obs interior to i-th inclusion
+             ! Elastic strain
+             straint=matmul(S2,eigent)
+             ! Elastic stress
+             stresst=matmul(Cm,matmul(S2,eigent)-eigent)
+          else ! J-th obs exterior to i-th inclusion
+             Ttmp=f0
+             do k=1,3
+                do l=1,3
+                   do m=1,3
+                      do n=1,3
+                         Ttmp(k,l)=Ttmp(k,l)+D4(k,l,m,n)*Teigen(m,n)
+                      end do
+                   end do
+                end do
+             end do
+             straint(:,1)=(/Ttmp(1,1),Ttmp(2,2),Ttmp(3,3),Ttmp(1,2),Ttmp(2,3),    &
+                       Ttmp(1,3)/)
+             ! Elastic stress
+             stresst=matmul(Cm,straint)
+          end if
+          ! Rotate back to original coordinate
+          call Vec2Mat(stresst(:,1),Tstress)
+          call Vec2Mat(straint(:,1),Tstrain)
+
+          Tstress=matmul(matmul(matmul(R,Rb_init),Tstress),                    &
+                  transpose(matmul(R,Rb_init)))
+          Tstrain=matmul(matmul(matmul(R,Rb_init),Tstrain),                    &
+                  transpose(matmul(R,Rb_init)))
+          ! Record stress and strain
+          sol(j,4:15)=sol(j,4:15)+(/Tstress(1,1),Tstress(2,2),Tstress(3,3),      &
+                                   Tstress(1,2),Tstress(2,3),Tstress(1,3),      &
+                                   Tstrain(1,1),Tstrain(2,2),Tstrain(3,3),      &
+                                   Tstrain(1,2),Tstrain(2,3),Tstrain(1,3)/)
+       end do ! nobs
+    end do ! nellip
+  end subroutine EshIncSol2
+
   ! Translation 3x3x3x3 tensor to 6x6, FE order 1-11,2-22,3-33,4-12,5-23,6-13
   subroutine T4T2(T4,T2)
     implicit none

@@ -54,7 +54,7 @@ program main
 
   t1=MPI_Wtime()
   call PrintMsg("Reading input ...")
-  call ReadParameters
+  call ReadParameters(nodal_bw)
 
   if (half .or. fini) then ! Half or finite space problem
      ! Set element specific constants
@@ -72,7 +72,7 @@ program main
            call METIS_PartMeshNodal(nels,nnds,work,nodes,null_i,null_i,nprcs,  &
               null_r,null_i,n,epart,npart)
            deallocate(nodes,work)
-           rewind(10); call ReadParameters
+           rewind(10); call ReadParameters(nodal_bw)
         end if
         call MPI_Bcast(npart,nnds,MPI_Integer,0,MPI_Comm_World,ierr)
         call MPI_Bcast(epart,nels,MPI_Integer,0,MPI_Comm_World,ierr)
@@ -414,9 +414,9 @@ program main
            end if
            call UpInhoEigen(ellipeff(:,12:17),fluid=.true.) ! Superpose
         end if
-        call EshIncSol(mat(1),mat(2),ellipeff,ocoord,odat_glb(:,:9))
+        call EshIncSol2(mat(1),mat(2),ellipeff,ocoord,odat_glb(:,:15))
      else
-        call EshIncSol(mat(1),mat(2),ellipeff(:nsolid,:),ocoord,odat_glb(:,:9))
+        call EshIncSol2(mat(1),mat(2),ellipeff(:nsolid,:),ocoord,odat_glb(:,:15))
      end if
 
   ! Tuncated space involving numerical boundary condition solutions.
@@ -646,42 +646,6 @@ program main
 
 contains
 
-  ! Read simulation parameters
-  subroutine ReadParameters
-    implicit none
-    integer,save :: k=0
-    read(10,*)stype
-    full=.false.;half=.false.;fini=.false.;incl=.false.;inho=.false.
-    if (index(stype,"full")/=0) full=.true.
-    if (index(stype,"half")/=0) half=.true.
-    if (index(stype,"fini")/=0) fini=.true.
-    if (index(stype,"incl")/=0) incl=.true.
-    if (index(stype,"inho")/=0) inho=.true.
-    if (full) then
-       read(10,*)nellip,nsolid,nobs
-    else
-       read(10,*)nellip,nsolid,nrect,nobs
-    end if
-    ! Fluid-solid iteration
-    if (nsolid>0 .and. nellip>nsolid) read(10,*)rtol,nrtol
-    if (k==0) then
-       allocate(ocoord(nobs,3))
-       allocate(ellip(nellip,17),instress(nellip,6)); instress=f0
-       if (half .or. fini) allocate(rect(nrect,9))
-    end if
-    if (half .or. fini) then
-       read(10,*)eltype,nodal_bw
-       read(10,*)nels,nnds,ntrc
-       read(10,*)tol,ntol
-       if (k==0) allocate(odat_glb(nobs,18))
-    else
-       if (k==0) allocate(odat_glb(nobs,9))
-       ntrc=0; nrect=0
-    end if
-    odat_glb=f0
-    read(10,*)mat(:) ! Material
-    k=k+1
-  end subroutine ReadParameters
 
   ! Scatter U and get all local values
   subroutine GetVec_U
@@ -826,5 +790,4 @@ contains
     call VecAXPY(Vec_Eig,f1,Vec_dEig,ierr)
     call ConvergeL2(Vec_Eig,Vec_dEig,6,resid)
   end subroutine CoupleFSF
-
 end program main
