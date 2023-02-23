@@ -17,7 +17,7 @@ contains
     ! Check geometry category, assuming a(1)>a(2)>a(3)
     if (a(1)-a(2)<1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then ! Spherical case
        Ifir=(f4/f3)*pi
-       Isec=0.8*pi*a(1)**2
+       Isec=0.8*pi/a(1)**2
     elseif (a(1)-a(2)>1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then ! Prolate case
        Ifir(2)=f2*pi*a(1)*a(3)**2/((a(1)**2-a(3)**2)**1.5)                     &
           *(rate*sqrt(rate**2-f1)-acosh(rate))
@@ -143,10 +143,11 @@ contains
     call elbd(theta,0.5*pi-theta,f1-m,B,D)
     F=B+D; E=B+(f1-m)*D
     ! Calculation of Is
-    if (a(1)==a(2) .and. a(1)==a(3)) then
+    if (a(1)-a(2)<1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then
+       del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        Ifir=(f4/f3)*pi*a(1)**3/(a(1)**2+lambda)**1.5
-       Isec=0.8*pi*a(1)**3/sqrt(a(1)**2+lambda)
-    elseif (a(1)>a(2) .and. a(3)==a(2)) then
+       Isec=0.8*pi*a(1)**3/(a(1)**2+lambda)**2.5
+    elseif (a(1)-a(2)>1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        bbar=sqrt(a(1)**2+lambda)/sqrt(a(3)**2+lambda)
        dbar=sqrt(a(1)**2-a(3)**2)/sqrt(a(3)**2+lambda)
@@ -164,7 +165,7 @@ contains
                  Isec(1,3))/f3
        Isec(2,2)=Isec(2,3)
        Isec(3,3)=Isec(2,3)
-    elseif (a(1)==a(2) .and. a(2)>a(3)) then
+    elseif (a(1)-a(2)<1.d-6*a(1) .and. a(2)-a(3)>1.d-6*a(2)) then
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        bbar=sqrt(a(3)**2+lambda)/sqrt(a(1)**2+lambda)
        dbar=sqrt(a(1)**2-a(3)**2)/sqrt(a(1)**2+lambda)
@@ -901,7 +902,7 @@ contains
                        Ttmp(1,3)/)
              ! Elastic stress
              stresst=matmul(Cm,straint)
-          end if
+           end if
           ! Rotate back to original coordinate
           call Vec2Mat(stresst(:,1),Tstress)
           call Vec2Mat(straint(:,1),Tstrain)

@@ -1,8 +1,9 @@
 module utils
   implicit none
   real(8),parameter :: f0=0.0d0,f1=1.0d0,f2=2.0d0,f3=3.0d0,f4=4.0d0,f6=6.0d0,  &
-     f8=8.0d0,km2m=1.0d0,gravity=9.806650d0,                                &
+     f8=8.0d0,gravity=9.806650d0,                                &
      pi=3.1415926535897932384626433832795d0
+  real(8) :: km2m=1.0d3
 
   INTEGER,PARAMETER,PRIVATE:: SP=KIND(1.0), DP=KIND(1.0D0)
   REAL(DP),PARAMETER,PRIVATE:: ZERO=0.0D0, FOURTH=0.25D0, HALF=0.5D0

@@ -17,7 +17,7 @@ module global
 #endif
   ! Global variables
   integer :: nnds,nels,ntrc,ntrc_loc,nobs,nobs_loc,nellip,nellip_loc,nrect,    &
-     ntol,nrtol,nfix,nsolid,nfluid,obsDim=3,nobsArray(3)
+     ntol,nrtol,nfix,nsolid,nfluid,obsDim=3,nobsArray(3),output_counter=0
   real(8) :: val,top,rstress(6),tol,rtol,mat(2)
   integer,allocatable :: nodes(:,:),work(:),onlst(:,:),surfel_glb(:),surfel(:),&
      surfside_glb(:),surfside(:),idface(:),oel(:),eel(:),bc(:,:),ndfix_glb(:), &
@@ -732,10 +732,9 @@ contains
     integer(hsize_t) :: dim_dat(2),dim_dat_obs(3)
     integer :: err, i
     character(256) :: name,name0,name1
-    character(256), parameter :: groupname = "step1"
     character(256), parameter :: properName = "properties"
-    integer, parameter :: n = 41
-
+    character(256) :: groupname;
+    
     character(2), parameter :: posName(3) = (/"x", "y","z"/)
     character(4), parameter :: propertiesList(17) = (/"ellx","elly","ellz","semx","semy","semz","roax","roay","roaz","ymod","poss","es11","es22","es33","es12","es23","es13"/)
     character(7), parameter :: scName(3) = (/"scoordx","scoordy","scoordz"/)
@@ -744,6 +743,14 @@ contains
 
     character(4), allocatable :: odatName(:)
 
+    if(rank == nprcs -1) then
+        write(*,*)"applied stress:"
+        write(*,'(6A10)')"sxx","syy","szz","sxy","syz","szx"
+        write(*,'(6E10.2)')rstress(1:6)
+    endif
+
+    write(groupname,'(I6.6)')output_counter
+    
     if (half .or. fini) then
         allocate(odatName(18))
         odatName = (/"ux ", "uy ", "uz ",                &
@@ -760,26 +767,29 @@ contains
     name1=output_file(index(output_file,"/",BACK=.TRUE.)+1:)
     write(name,'(A,A,A)')trim(name0),trim(name1),".h5"
     call h5open_f(err)
-    call h5fcreate_f(trim(name),H5F_ACC_TRUNC_F,idfile,err)
 
-    ! create the proerty group
-    call h5gcreate_f(idfile, properName, group_id, err)
-    dim_dat_obs(1) = size(ellip,1)
-    do i = 1,size(propertiesList,1)
-        call h5screate_simple_f(1,dim_dat_obs,spc_dat,err)
-        call h5dcreate_f(group_id,propertiesList(i),h5t_native_double,spc_dat,iddat,err)
-        call h5dwrite_f(iddat,h5t_native_double,ellip(:,i),dim_dat_obs,err)
-        call h5dclose_f(iddat,err)
-    enddo
-
-    !close the proerty group
-    call h5gclose_f(group_id, err)
+    if(output_counter == 0) then
+        call h5fcreate_f(trim(name),H5F_ACC_TRUNC_F,idfile,err)
+        ! create the proerty group
+        call h5gcreate_f(idfile, properName, group_id, err)
+        dim_dat_obs(1) = size(ellip,1)
+        do i = 1,size(propertiesList,1)
+            call h5screate_simple_f(1,dim_dat_obs,spc_dat,err)
+            call h5dcreate_f(group_id,propertiesList(i),h5t_native_double,spc_dat,iddat,err)
+            call h5dwrite_f(iddat,h5t_native_double,ellip(:,i),dim_dat_obs,err)
+            call h5dclose_f(iddat,err)
+        enddo
+        !close the proerty group
+        call h5gclose_f(group_id, err)
+    else
+        call h5fopen_f(trim(name), H5F_ACC_RDWR_F, idfile, err)
+    endif
 
     ! create the filed group
     call h5gcreate_f(idfile, groupname, group_id, err)
-    
-    dim_dat_obs = (/nobsArray(1),nobsArray(2),nobsArray(3)/)
 
+    ! obs data
+    dim_dat_obs = (/nobsArray(1),nobsArray(2),nobsArray(3)/)
     do i=1,3
         call h5screate_simple_f(obsDim,dim_dat_obs,spc_dat,err)
         call h5dcreate_f(group_id,posName(i),h5t_native_double,spc_dat,iddat,err)
@@ -793,7 +803,6 @@ contains
         call h5dclose_f(iddat,err)
     enddo
 
-    ! obs data
     do i=1,size(odatName,1)
         call h5screate_simple_f(obsDim,dim_dat_obs,spc_dat,err)
         call h5dcreate_f(group_id,odatName(i),h5t_native_double,spc_dat,iddat,err)
@@ -829,8 +838,6 @@ contains
        call h5dwrite_f(iddat,h5t_native_double,transpose(surfdat_glb),         &
           dim_dat,err)
        call h5dclose_f(iddat,err)
-
-        
     end if
 
     !close the field group

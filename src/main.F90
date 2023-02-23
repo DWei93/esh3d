@@ -182,6 +182,7 @@ program main
      end do
      call MatAssemblyBegin(Mat_K,Mat_Final_Assembly,ierr)
      call MatAssemblyEnd(Mat_K,Mat_Final_Assembly,ierr)
+
      if (fini) call FormMatKfull
 
      ! Read traction surface (surfel, surfside, surftrc, surf)
@@ -640,7 +641,34 @@ program main
      call EshGather(surfdat,surfdat_glb)
      call EshGather(surfloc,surfloc_glb)
      call EshGather(surfmat(:,7:9),surfnrm_glb)
+    call VecDestroy(Vec_U, ierr)
+    call MatDestroy(Mat_K, ierr)
+    call VecDestroy(Seq_U, ierr)
+    call ISDestroy(From, ierr)
+    call ISDestroy(To, ierr)
+    call VecScatterDestroy(Scatter,ierr)
+    call KspDestroy(Krylov, ierr)
+    call VecDestroy(Vec_F, ierr)
+    if(fini) then
+        call VecDestroy(Vec_FixC, ierr)
+        call VecDestroy(Vec_FixF, ierr)
+    endif
   end if ! Half space case
+    if(inho) then
+        call VecDestroy(Vec_Feig,ierr)
+        call VecDestroy(Vec_Eig, ierr)
+        call MatDestroy(Mat_Keig, ierr)
+        call KspDestroy(KryInc, ierr)
+        if(nfluid>0) then
+            call MatDestroy(Mat_Kfld, ierr)
+            call MatDestroy(Mat_Kvol, ierr)
+            call KspDestroy(KryFld, ierr)
+            call KspDestroy(KryVol, ierr)
+            call VecDestroy(Vec_Evol, ierr)
+            call VecDestroy(Vec_Fvol, ierr)
+            if(nsolid>0) call VecDestroy(Vec_dEig, ierr)
+        endif
+    endif
   if (rank==nprcs-1) call EshSave
 9 call PetscFinalize(ierr)
 
