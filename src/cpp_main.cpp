@@ -4,9 +4,9 @@
 #include <cstdio>
 #include <petsc.h>
 
+static char petscHelp[] = "Compile esh3d with PETSc libaray\n";
 #define real8 double 
 extern "C"{
-    void petsc_initialize_f();
 	void esh3d_initialize_f(char *, int *, bool *, bool *, bool *, bool *);
     void inhomogeneity_induced_linear_system_f();
     void inhomogeneity_induced_eigenstrain_full_space_f(real8 *);
@@ -51,8 +51,8 @@ int main(int argc, char *argv[]) {
     param.tecmeshcounter = 0;
 //  PetscInitializeNoArguments();
 
+    PetscCall(PetscInitialize(&argc, &argv, (char *)0, petscHelp));
     PetscInitializeFortran();
-    petsc_initialize_f();
     PetscOptionsBegin(PETSC_COMM_WORLD, "test_","options for tests",__FILE__); 
     PetscCall(PetscOptionsBool("-1", "1. small demo for building a system of "
                 "partial differential equations (PDEs) ",__func__,petscTest1,&petscTest1,NULL));

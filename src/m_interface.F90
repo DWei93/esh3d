@@ -24,18 +24,13 @@ integer, allocatable :: hit(:)
 
 contains
 
-subroutine petsc_initialize_f() bind(c)
-    use iso_c_binding
-    call PetscInitialize(Petsc_Null_Character,ierr)
-end subroutine petsc_initialize_f
-
 subroutine esh3d_initialize_f(inpfile, length, full_space, inhomogeneous &
 , half_space, finite) bind(c)
     use iso_c_binding
     implicit none
     integer(c_int) :: length
     character(c_char) :: inpfile
-    LOGICAL(c_bool) :: full_space, inhomogeneous, half_space, finite
+    integer(c_int) :: full_space, inhomogeneous, half_space, finite
 
 
 !   km2m is set to be 1 b
@@ -789,7 +784,7 @@ subroutine eshelby_stress_full_space_solver(ellip, coord, stress)
         vert(1,1)=coord(1)-ellip(i,1)
         vert(2,1)=coord(2)-ellip(i,2)
         vert(3,1)=coord(3)-ellip(i,3)
-
+        
         vert=matmul(matmul(R_init,Rb),vert)
         call EshD4(vm,a,vert(:,1),D4,fderphi,tderpsi)
         call EshDisp(vm,eigent(:,1),fderphi,tderpsi,disp)

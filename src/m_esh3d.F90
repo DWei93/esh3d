@@ -138,16 +138,16 @@ contains
           if (AIMAG(rt(i))==f0) lambda=max(lambda,dble(rt(i)))
        end do
     end if
+    theta=asin(sqrt((a(1)**2-a(3)**2)/(a(1)**2+lambda))) ! the amplitude
+    m=(a(1)**2-a(2)**2)/(a(1)**2-a(3)**2) ! m=k**2 is the parameter
+    call elbd(theta,0.5*pi-theta,f1-m,B,D)
+    F=B+D; E=B+(f1-m)*D
     ! Calculation of Is
     if (a(1)-a(2)<1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        Ifir=(f4/f3)*pi*a(1)**3/(a(1)**2+lambda)**1.5
        Isec=0.8*pi*a(1)**3/(a(1)**2+lambda)**2.5
     elseif (a(1)-a(2)>1.d-6*a(1) .and. a(2)-a(3)<1.d-6*a(1)) then
-       theta=asin(sqrt((a(1)**2-a(3)**2)/(a(1)**2+lambda))) ! the amplitude
-       m=(a(1)**2-a(2)**2)/(a(1)**2-a(3)**2) ! m=k**2 is the parameter
-       call elbd(theta,0.5*pi-theta,f1-m,B,D)
-       F=B+D; E=B+(f1-m)*D
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        bbar=sqrt(a(1)**2+lambda)/sqrt(a(3)**2+lambda)
        dbar=sqrt(a(1)**2-a(3)**2)/sqrt(a(3)**2+lambda)
@@ -166,10 +166,6 @@ contains
        Isec(2,2)=Isec(2,3)
        Isec(3,3)=Isec(2,3)
     elseif (a(1)-a(2)<1.d-6*a(1) .and. a(2)-a(3)>1.d-6*a(2)) then
-       theta=asin(sqrt((a(1)**2-a(3)**2)/(a(1)**2+lambda))) ! the amplitude
-       m=(a(1)**2-a(2)**2)/(a(1)**2-a(3)**2) ! m=k**2 is the parameter
-       call elbd(theta,0.5*pi-theta,f1-m,B,D)
-       F=B+D; E=B+(f1-m)*D
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        bbar=sqrt(a(3)**2+lambda)/sqrt(a(1)**2+lambda)
        dbar=sqrt(a(1)**2-a(3)**2)/sqrt(a(1)**2+lambda)
@@ -187,10 +183,6 @@ contains
        Isec(3,3)=((f4*pi*product(a))/((a(3)**2+lambda)*del)-Isec(1,3)-         &
                  Isec(2,3))/f3
     else
-       theta=asin(sqrt((a(1)**2-a(3)**2)/(a(1)**2+lambda))) ! the amplitude
-       m=(a(1)**2-a(2)**2)/(a(1)**2-a(3)**2) ! m=k**2 is the parameter
-       call elbd(theta,0.5*pi-theta,f1-m,B,D)
-       F=B+D; E=B+(f1-m)*D
        del=sqrt((a(1)**2+lambda)*(a(2)**2+lambda)*(a(3)**2+lambda))
        Ifir(1)=f4*pi*product(a)*F/sqrt(a(1)**2-a(3)**2)*(f1-E/F)/(a(1)**2-     &
                a(2)**2)
@@ -767,7 +759,7 @@ contains
     implicit none
     integer :: i,nellip
     real(8) :: ellip(:,:),Teigen(3,3),R(3,3),ang(3)
-    nellip=size(ellip,1) ! local ellip size, contain ghost ellips
+    nellip=size(ellip,1)
     do i=1,nellip
        call Vec2Mat(ellip(i,12:17),Teigen)
        ang=ellip(i,7:9)
