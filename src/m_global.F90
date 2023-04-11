@@ -53,6 +53,16 @@ module global
   VecScatter :: Scatter
   real(8),pointer :: pntr(:)
 
+  !> New varibales created by DWei
+    PetscInt, pointer :: ellipIDs(:) 
+    IS          :: ellipIS                              !! Global particle inddex
+    Mat         :: matRef                               !! reference mat for count the Aij matrix
+    PetscInt    :: maxNbrs                              !! Maximum neighbors paraticals in the domain
+    PetscInt    :: nellip_glo                           !! The Toatal ellips in all doamins
+    PetscReal   :: xLength, yLength, zLength            !! Box lengths
+    PetscReal   :: xLengthInv, yLengthInv, zLengthInv   !! Inverse of box lengths
+    logical     :: xPeriodic, yPeriodic, zPeriodic 
+
 contains
 
   ! Form local [K]
